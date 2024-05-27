@@ -3,11 +3,9 @@ This project aims to build and train a convolutional neural network (CNN) named 
 
 Installation: 
 Ensure you have installed the following:
-- Python 3.6
 - PyTorch
 - torchvision
 - scikit-learn
-- Google colab for training on GPU
 
 Dataset: 
 The Flowers102 datset is downloaded automatically by this: 'torchvision.datasets.Flowers102' class
