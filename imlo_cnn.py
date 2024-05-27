@@ -13,14 +13,14 @@ class FlowerNet(nn.Module):
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
         self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.fc1 = nn.Linear(64 * 28 * 28, 128)  # Updated for the additional conv layer
+        self.fc1 = nn.Linear(64 * 28 * 28, 128) 
         self.fc2 = nn.Linear(128, 102)
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = self.pool(torch.relu(self.conv3(x)))
-        x = x.view(-1, 64 * 28 * 28)  # Updated for the additional conv layer
+        x = x.view(-1, 64 * 28 * 28) 
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -54,20 +54,24 @@ val_test_transform = transforms.Compose([
 batch_size = 32
 data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+val_dataset = Flowers102(root='./data', split='val', transform=val_transform, download=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size)
+
+test_dataset = Flowers102(root='./data', split='test', transform=test_transform, download=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size)
+
+val_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+test_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 num_epochs = 200
-for epoch in range(num_epochs):
-    model.train()
-    running_loss = 0.0
-    for inputs, labels in data_loader:
-        inputs, labels = inputs.to(device), labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item() * inputs.size(0)
-    epoch_loss = running_loss / len(data_loader.dataset)
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
 def validate_model(model, val_loader, criterion):
     model.eval()
@@ -94,7 +98,8 @@ def validate_model(model, val_loader, criterion):
     recall = recall_score(all_labels, all_predictions, average='weighted')
     print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2%}")
     print(f"Validation Precision: {precision:.2%}, Validation Recall: {recall:.2%}")
-
+    return val_loss, val_accuracy, precision, recall
+    
 def test_model(model, test_loader, criterion):
     model.eval()
     test_loss = 0.0
@@ -120,28 +125,22 @@ def test_model(model, test_loader, criterion):
     recall = recall_score(all_labels, all_predictions, average='weighted')
     print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2%}")
     print(f"Test Precision: {precision:.2%}, Test Recall: {recall:.2%}")
+    return test_loss, test_aacuracy, precision, recall
 
-val_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+    for inputs, labels in data_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item() * inputs.size(0)
+    epoch_loss = running_loss / len(data_loader.dataset)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
-test_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
+    validate_model(model, val_loader, criterion)
 
-val_dataset = Flowers102(root='./data', split='val', transform=val_transform, download=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_size)
-
-# Validate the model
-validate_model(model, val_loader, criterion)
-
-# Load the Flowers102 test dataset
-test_dataset = Flowers102(root='./data', split='test', transform=test_transform, download=True)
-test_loader = DataLoader(test_dataset, batch_size=batch_size)
-
-# Test the model
 test_model(model, test_loader, criterion)
